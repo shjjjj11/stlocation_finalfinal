@@ -1,0 +1,257 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학생 위치 선택</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        select {
+            width: 100%;
+            padding: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .chart-container {
+            margin-top: 30px;
+        }
+    </style>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+        // Supabase 초기화
+        const supabaseUrl = 'https://jjsjbkweopmfxftclkhg.supabase.co'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqc2pia3dlb3BtZnhmdGNsa2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjgzMjE2ODksImV4cCI6MjA0Mzg5NzY4OX0.zL9x9clX8l3t8OqUhGeRYkVQMAflgDUcK3U5agLuVjg';
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // 여기에 기존의 JavaScript 코드 추가
+        const students = ["2101강보송", "2102김규원", "2103김다빈", "2104김동주", "2105김민재", "2106김유경", "2107민수현", "2108박정효", 
+            "2109변세희", "2110성지민", "2111송하민", "2112심현서", "2113양서진", "2114유이정", "2115유혜린", 
+            "2116이가영", "2117이예슬", "2118이의진", "2119임세윤", "2120정서현", "2121정해서", "2122최근영", 
+            "2123서형진", "2124연진모"];
+
+        const locations = ["교실(이동x)", "외출", "국탐실", "국악실", "무용실", "체육관", "방송실", "음악실", "랭블", "글블 1", "글블 2", "글블 3", "글숲마루", "미술실", "렉처룸", "스터디홀", "홈베이스", "시청각실", "진로교육실", "학생회실", "위클래스", "수교과실"];
+
+        // 도표 색상 지정
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // 선택창
+        function createSelect(selectedValue = "") {
+            const select = document.createElement("select");
+            locations.forEach(location => {
+                const option = document.createElement("option");
+                option.value = location;
+                option.textContent = location;
+                if (location === selectedValue) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            return select;
+        }
+
+        // 테이블 채우기
+        async function populateTable() {
+            const { data, error } = await supabase
+                .from('student_choices')
+                .select('*');
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            const tbody = document.querySelector("#studentTable tbody");
+            tbody.innerHTML = "";
+
+            students.forEach(student => {
+                const row = document.createElement("tr");
+
+                const nameCell = document.createElement("td");
+                nameCell.textContent = student;
+                row.appendChild(nameCell);
+
+                for (let i = 0; i < 3; i++) {
+                    const cell = document.createElement("td");
+                    const savedValue = getSavedChoiceFromData(data, student, i);
+                    cell.appendChild(createSelect(savedValue));
+                    row.appendChild(cell);
+                }
+
+                tbody.appendChild(row);
+            });
+        }
+
+        // 데이터로 저장된 선택값 불러오기
+        function getSavedChoiceFromData(data, student, period) {
+            const choice = data.find(entry => entry.student_name === student && entry.period === period);
+            return choice ? choice.location : "";
+        }
+
+        // 선택값 보내기
+        async function submitChoices() {
+            const rows = document.querySelectorAll("#studentTable tbody tr");
+            const choices = [];
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll("td");
+                const studentName = cells[0].textContent;
+
+                for (let i = 1; i < cells.length; i++) {
+                    const select = cells[i].querySelector("select");
+                    const choice = {
+                        student_name: studentName,
+                        period: i - 1,
+                        location: select.value
+                    };
+                    choices.push(choice);
+                }
+            });
+
+            try {
+                const { data, error } = await supabase
+                    .from('student_choices')
+                    .upsert(choices, { onConflict: ['student_name', 'period'] });
+
+                if (error) throw error;
+
+                alert("선택한 내용이 저장되었습니다.");
+                visualizeChoices();
+            } catch (error) {
+                console.error("데이터 저장 중 오류 발생:", error);
+                alert("데이터 저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+            }
+        }
+
+        // 선택값 시각화
+        async function visualizeChoices() {
+            const { data, error } = await supabase
+                .from('student_choices')
+                .select('*');
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            const periods = ["8/9교시", "야자 1텀", "야자 2텀"];
+            const locationCounts = {};
+
+            locations.forEach(location => {
+                locationCounts[location] = [0, 0, 0];
+            });
+
+            data.forEach(studentChoices => {
+                const { location, period } = studentChoices;
+                if (locationCounts[location] && period >= 0 && period < 3) {
+                    locationCounts[location][period]++;
+                }
+            });
+
+            const chartData = {
+                labels: periods,
+                datasets: locations.map(location => ({
+                    label: location,
+                    data: locationCounts[location],
+                    backgroundColor: getRandomColor(),
+                }))
+            };
+
+            const ctx = document.getElementById('chart').getContext('2d');
+            if (window.myChart instanceof Chart) {
+                window.myChart.destroy();
+            }
+            window.myChart = new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            stacked: true,
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                        }
+                    }
+                }
+            });
+        }
+
+        // 페이지 로드 시 테이블과 차트 초기화
+        document.addEventListener("DOMContentLoaded", () => {
+            populateTable();
+            visualizeChoices();
+        });
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <h1>2학년 1반 학생 위치 선택</h1>
+    <table id="studentTable">
+        <thead>
+            <tr>
+                <th>이름</th>
+                <th>8/9교시</th>
+                <th>야자 1텀</th>
+                <th>야자 2텀</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- JavaScript로 추가되는 내용 -->
+        </tbody>
+    </table>
+    <button onclick="submitChoices()">선택 저장</button>
+
+    <div class="chart-container">
+        <canvas id="chart"></canvas>
+    </div>
+</div>
+
+</body>
+</html>
+
+
