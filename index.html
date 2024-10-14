@@ -49,6 +49,7 @@
             margin-top: 30px;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
@@ -225,6 +226,9 @@
             populateTable();
             visualizeChoices();
         });
+
+        // submitChoices를 전역으로 선언
+        window.submitChoices = submitChoices;
     </script>
 </head>
 <body>
@@ -241,16 +245,15 @@
             </tr>
         </thead>
         <tbody>
+            <!-- 데이터로 생성된 학생 위치 선택 테이블 -->
         </tbody>
     </table>
     <button onclick="submitChoices()">선택 저장</button>
-
+    
     <div class="chart-container">
-        <h2>결과 시각화</h2>
         <canvas id="chart"></canvas>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
