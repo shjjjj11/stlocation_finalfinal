@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -53,12 +52,10 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-        // Supabase 초기화
-        const supabaseUrl = 'https://jjsjbkweopmfxftclkhg.supabase.co'; 
+        const supabaseUrl = 'https://jjsjbkweopmfxftclkhg.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqc2pia3dlb3BtZnhmdGNsa2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjgzMjE2ODksImV4cCI6MjA0Mzg5NzY4OX0.zL9x9clX8l3t8OqUhGeRYkVQMAflgDUcK3U5agLuVjg';
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // 여기에 기존의 JavaScript 코드 추가
         const students = ["2101강보송", "2102김규원", "2103김다빈", "2104김동주", "2105김민재", "2106김유경", "2107민수현", "2108박정효", 
             "2109변세희", "2110성지민", "2111송하민", "2112심현서", "2113양서진", "2114유이정", "2115유혜린", 
             "2116이가영", "2117이예슬", "2118이의진", "2119임세윤", "2120정서현", "2121정해서", "2122최근영", 
@@ -150,11 +147,14 @@
             });
 
             try {
-                const { data, error } = await supabase
-                    .from('student_choices')
-                    .upsert(choices, { onConflict: ['student_name', 'period'] });
+                // 선택된 값만 데이터베이스에 업데이트
+                for (const choice of choices) {
+                    const { data, error } = await supabase
+                        .from('student_choices')
+                        .upsert([choice], { onConflict: ['student_name', 'period'] });
 
-                if (error) throw error;
+                    if (error) throw error;
+                }
 
                 alert("선택한 내용이 저장되었습니다.");
                 visualizeChoices();
@@ -225,7 +225,6 @@
             populateTable();
             visualizeChoices();
         });
- window.submitChoices = submitChoices;
     </script>
 </head>
 <body>
@@ -242,17 +241,15 @@
             </tr>
         </thead>
         <tbody>
-            <!-- JavaScript로 추가되는 내용 -->
         </tbody>
     </table>
     <button onclick="submitChoices()">선택 저장</button>
 
     <div class="chart-container">
+        <h2>결과 시각화</h2>
         <canvas id="chart"></canvas>
     </div>
 </div>
 
-</body>
-</html>
-
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</
