@@ -54,7 +54,7 @@
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
         const supabaseUrl = 'https://jjsjbkweopmfxftclkhg.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqc2pia3dlb3BtZnhmdGNsa2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjgzMjE2ODksImV4cCI6MjA0Mzg5NzY4OX0.zL9x9clX8l3t8OqUhGeRYkVQMAflgDUcK3U5agLuVjg';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqc2pia3dlb3BtZnhmdGNsa2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjgzMjE2ODksImV4cCI6MjA0Mzg5NzY4OX0.zL9x9clX8l3t8OqUhGeRYkVQMAflgDUcK3U5agLuVjg'; // 여기서 실제 키로 교체하세요
         const supabase = createClient(supabaseUrl, supabaseKey);
 
         const students = ["2101강보송", "2102김규원", "2103김다빈", "2104김동주", "2105김민재", "2106김유경", "2107민수현", "2108박정효", 
@@ -89,6 +89,42 @@
             return select;
         }
 
+        // 데이터로 저장된 선택값 불러오기
+        function getSavedChoiceFromData(data, student, period) {
+            const choice = data.find(entry => entry.student_name === student && entry.period === period);
+            return choice ? choice.location : "";
+        }
+
+        // 선택값 보내기
+        async function submitChoice(studentName, period, location) {
+            try {
+                const choice = {
+                    student_name: studentName,
+                    period: period,
+                    location: location
+                };
+
+                const { data, error } = await supabase
+                    .from('student_choices')
+                    .upsert([choice], { onConflict: ['student_name', 'period'] });
+
+                if (error) throw error;
+
+                alert("선택한 내용이 저장되었습니다.");
+                visualizeChoices(); // 차트 업데이트
+            } catch (error) {
+                console.error("데이터 저장 중 오류 발생:", error);
+                alert("데이터 저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+            }
+        }
+
+        // 선택창 변경 시 호출
+        function handleSelectChange(studentName, period) {
+            const select = event.target;
+            const location = select.value;
+            submitChoice(studentName, period, location); // 각 학생의 선택을 서버에 개별적으로 제출
+        }
+
         // 테이블 채우기
         async function populateTable() {
             const { data, error } = await supabase
@@ -113,56 +149,14 @@
                 for (let i = 0; i < 3; i++) {
                     const cell = document.createElement("td");
                     const savedValue = getSavedChoiceFromData(data, student, i);
-                    cell.appendChild(createSelect(savedValue));
+                    const select = createSelect(savedValue);
+                    select.onchange = () => handleSelectChange(student, i); // 선택이 변경될 때 호출
+                    cell.appendChild(select);
                     row.appendChild(cell);
                 }
 
                 tbody.appendChild(row);
             });
-        }
-
-        // 데이터로 저장된 선택값 불러오기
-        function getSavedChoiceFromData(data, student, period) {
-            const choice = data.find(entry => entry.student_name === student && entry.period === period);
-            return choice ? choice.location : "";
-        }
-
-        // 선택값 보내기
-        async function submitChoices() {
-            const rows = document.querySelectorAll("#studentTable tbody tr");
-            const choices = [];
-
-            rows.forEach(row => {
-                const cells = row.querySelectorAll("td");
-                const studentName = cells[0].textContent;
-
-                for (let i = 1; i < cells.length; i++) {
-                    const select = cells[i].querySelector("select");
-                    const choice = {
-                        student_name: studentName,
-                        period: i - 1,
-                        location: select.value
-                    };
-                    choices.push(choice);
-                }
-            });
-
-            try {
-                // 선택된 값만 데이터베이스에 업데이트
-                for (const choice of choices) {
-                    const { data, error } = await supabase
-                        .from('student_choices')
-                        .upsert([choice], { onConflict: ['student_name', 'period'] });
-
-                    if (error) throw error;
-                }
-
-                alert("선택한 내용이 저장되었습니다.");
-                visualizeChoices();
-            } catch (error) {
-                console.error("데이터 저장 중 오류 발생:", error);
-                alert("데이터 저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
-            }
         }
 
         // 선택값 시각화
@@ -226,9 +220,6 @@
             populateTable();
             visualizeChoices();
         });
-
-        // submitChoices를 전역으로 선언
-        window.submitChoices = submitChoices;
     </script>
 </head>
 <body>
